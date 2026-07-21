@@ -67,6 +67,8 @@ function escapeICS(str) {
  * @returns {string} Full RFC 5545 .ics file content
  */
 export function generateICS(startDateStr, reminderHour = 7, reminderMinute = 30, alarmOffsetMin = 0) {
+  // The app URL — always embedded in every event & notification
+  const APP_URL = 'https://placement-reminder-system.vercel.app/';
   // Parse start date as local date (avoid UTC offset issues)
   const [year, month, day] = startDateStr.split('-').map(Number);
 
@@ -120,14 +122,16 @@ export function generateICS(startDateStr, reminderHour = 7, reminderMinute = 30,
       ``,
       `"${quoteObj.quote}"`,
       ``,
-      `✅ Open Placement Basecamp to review your checklist for today.`,
+      `✅ Tap below to open your Dashboard:`,
+      `${APP_URL}`,
+      ``,
       `Stay calibrated, Ankit!`,
     ].join('\n');
 
     const alarmDescription =
       alarmOffsetMin > 0
-        ? `Day ${dayIndex}/54 reminder — ${alarmOffsetMin} min until your prep session!`
-        : `Day ${dayIndex}/54 — Open Placement Basecamp & start your session!`;
+        ? `Day ${dayIndex}/54 — ${alarmOffsetMin} min to go! Open: ${APP_URL}`
+        : `Day ${dayIndex}/54 — Start your session now! ${APP_URL}`;
 
     const uid = `placement-day-${dayIndex}-${startDateStr}@placement-basecamp`;
 
@@ -137,11 +141,16 @@ export function generateICS(startDateStr, reminderHour = 7, reminderMinute = 30,
     lines.push(
       'BEGIN:VEVENT',
       foldLine(`UID:${uid}`).trimEnd(),
+      // SEQUENCE:1 tells Google Calendar this is an UPDATE to an existing event with the same UID.
+      // Re-importing this file will REPLACE old events instead of creating duplicates.
+      'SEQUENCE:1',
       foldLine(`DTSTAMP:${nowUTC}`).trimEnd(),
       foldLine(`DTSTART;TZID=Asia/Kolkata:${formatDateTimeIST(eventDate)}`).trimEnd(),
       foldLine(`DTEND;TZID=Asia/Kolkata:${formatDateTimeIST(eventDateEnd)}`).trimEnd(),
       foldLine(`SUMMARY:${escapeICS(summary)}`).trimEnd(),
       foldLine(`DESCRIPTION:${escapeICS(descriptionRaw)}`).trimEnd(),
+      // URL property — tappable link inside Google Calendar event detail view
+      foldLine(`URL:${APP_URL}`).trimEnd(),
       'STATUS:CONFIRMED',
       'TRANSP:TRANSPARENT',
       `CATEGORIES:${escapeICS(quoteObj.category || 'study')}`,
